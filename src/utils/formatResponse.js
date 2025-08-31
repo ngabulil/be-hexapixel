@@ -17,7 +17,7 @@ const formatResponsePagination = (res, statusCode, message, data, page, limit, t
             page,
             limit,
             totalPage,
-            queryParams
+            // queryParams
         }
     });
 }

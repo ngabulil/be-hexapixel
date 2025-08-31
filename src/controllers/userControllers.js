@@ -122,8 +122,6 @@ const getAllUsers = async (req, res) => {
         const currentRole = req.user.role;
 
         let query = {};
-
-        // Search dari FE (query string: ?search=nama)
         const search = req.query.search || '';
 
         if (search) {
@@ -133,7 +131,6 @@ const getAllUsers = async (req, res) => {
             ];
         }
 
-        // Role filter
         if (currentRole === 'manager') {
             query.role = 'employee';
         } else if (currentRole === 'super_admin') {
@@ -142,7 +139,6 @@ const getAllUsers = async (req, res) => {
             return formatResponsePagination(res, 403, 'Access denied', null, 1, 10, 0, req.query);
         }
 
-        // Pagination
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
@@ -152,15 +148,17 @@ const getAllUsers = async (req, res) => {
 
         const users = await User.find(query)
             .select('-password')
+            .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .sort({ createdAt: -1 });
+            .lean({ virtuals: true }); // << plain object, no mongoose internals
 
         return formatResponsePagination(res, 200, 'User list retrieved', users, page, limit, totalPage, req.query);
     } catch (err) {
         return formatResponsePagination(res, 500, 'Failed to get users', { error: err.message }, 1, 10, 0, req.query);
     }
 };
+
 
 // GET USER BY ID
 const getUserById = async (req, res) => {
@@ -203,7 +201,7 @@ const updateUser = async (req, res) => {
         }
 
         const { fullName, contactNumber, role, password } = req.body;
-        const photo = req.file ? req.file.filename : targetUser.photo;  // Gunakan foto yang ada jika tidak ada upload baru
+        const photo = req.file ? req.file.filename : null;  // Gunakan foto yang ada jika tidak ada upload baru
 
         // Tentukan fields yang bisa diubah
         const allowedFields = ['fullName', 'contactNumber', 'role', 'photo'];

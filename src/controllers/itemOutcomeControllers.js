@@ -25,7 +25,9 @@ const getAllItemOutcomes = async (req, res) => {
     const items = await ItemOutcome.find().sort({ createdAt: -1 });
     return formatResponse(res, 200, 'ItemOutcome list retrieved', items.map(item => ({
       ...item,
-      id: item._id
+      id: item._id,
+      value: item._id,
+      label: item.name
     })));
   } catch (err) {
     return formatResponse(res, 500, 'Failed to get item list', { error: err.message });

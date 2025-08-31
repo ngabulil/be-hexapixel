@@ -32,6 +32,7 @@ const getIncomes = async (req, res) => {
     const search = req.query.search || '';
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
+    // const limit = 1;
     const skip = (page - 1) * limit;
 
     const pipeline = [
@@ -108,17 +109,29 @@ const updateIncome = async (req, res) => {
   try {
     const userRole = req.user.role;
 
-    if (!['super_admin', 'manager'].includes(userRole)) {
-      return formatResponse(res, 403, 'Unauthorized to update income', null);
-    }
+    // Role yang bisa edit semua
+    const elevatedRoles = ['super_admin', 'manager']; // tambahin 'owner' kalau ada
+    const isElevated = elevatedRoles.includes(userRole);
 
-    const updated = await Income.findByIdAndUpdate(
-      req.params.id,
-      req.body,
+    // Employee hanya boleh update dokumen miliknya
+    const filter = {
+      _id: req.params.id,
+      ...(isElevated ? {} : { createdBy: req.user.id })
+    };
+
+    // Opsional: cegah perubahan field sensitif
+    const payload = { ...req.body };
+    delete payload._id;
+    delete payload.createdBy; // jangan izinkan pindah kepemilikan via update
+
+    const updated = await Income.findOneAndUpdate(
+      filter,
+      payload,
       { new: true, runValidators: true }
     );
 
     if (!updated) {
+      // Bisa berarti: dokumen tidak ada, atau employee mencoba edit milik orang lain
       return formatResponse(res, 404, 'Income not found', null);
     }
 
@@ -127,7 +140,6 @@ const updateIncome = async (req, res) => {
     return formatResponse(res, 500, 'Failed to update income', { error: err.message });
   }
 };
-
 
 const deleteIncome = async (req, res) => {
   try {
@@ -150,7 +162,7 @@ const deleteIncome = async (req, res) => {
 
 const exportIncomeExcel = async (req, res) => {
   try {
-    const { tydpe } = req.params; // 'currMonth' atau 'prevMonth'
+    const { type } = req.params; // 'currMonth' atau 'prevMonth'
 
     // Validasi jenis export
     if (!['currMonth', 'prevMonth'].includes(type)) {
