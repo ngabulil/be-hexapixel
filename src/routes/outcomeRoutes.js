@@ -9,7 +9,8 @@ const {
   getOutcomeById,
   updateOutcome,
   deleteOutcome,
-  exportOutcomesByMonth
+  exportOutcomesByMonth,
+  getOutcomeByMonth
 } = require('../controllers/outcomeControllers');
 
 // semua route outcome butuh login
@@ -20,6 +21,7 @@ router.post('/', uploadTo('receipts').single('receipt'), createOutcome);
 
 // GET all outcomes
 router.get('/', getOutcomes);
+router.get('/:type', getOutcomeByMonth);
 
 // EXPORT outcomes by monthType (currMonth / prevMonth)
 // taruh di atas route :id supaya tidak bentrok

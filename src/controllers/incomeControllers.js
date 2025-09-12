@@ -88,6 +88,61 @@ const getIncomes = async (req, res) => {
   }
 };
 
+const getIncomeByMonth = async (req, res) => {
+  try {
+    const { type } = req.params;
+    if (!['currMonth', 'prevMonth'].includes(type)) {
+      return formatResponse(res, 400, "Invalid type. Use 'currMonth' or 'prevMonth'.", null);
+    }
+
+    // tentukan periode
+    const now = dayjs();
+    const target = type === 'currMonth' ? now : now.subtract(1, 'month');
+    const startDate = target.startOf('month').toDate();
+    const endDate = target.endOf('month').toDate();
+
+    // aggregate incomes
+    const datas = await Income.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate, $lte: endDate }
+        }
+      },
+      {
+        $lookup: {
+          from: 'itemincomes',
+          localField: 'item',
+          foreignField: '_id',
+          as: 'item'
+        }
+      },
+      { $unwind: '$item' },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'createdBy',
+          foreignField: '_id',
+          as: 'createdBy'
+        }
+      },
+      { $unwind: '$createdBy' },
+      { $sort: { createdAt: -1 } }
+    ]);
+
+    // bentuk response sesuai format
+    const responseData = {
+      type: 'incomes',
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      datas
+    };
+
+    return formatResponse(res, 200, `Income list for ${type}`, responseData);
+  } catch (err) {
+    return formatResponse(res, 500, 'Failed to get incomes by month', { error: err.message });
+  }
+};
+
 const getIncomeById = async (req, res) => {
   try {
     const income = await Income.findById(req.params.id)
@@ -234,6 +289,7 @@ module.exports = {
   createIncome,
   getIncomes,
   getIncomeById,
+  getIncomeByMonth,
   updateIncome,
   deleteIncome,
   exportIncomeExcel

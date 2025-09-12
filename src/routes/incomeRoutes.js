@@ -8,7 +8,8 @@ const {
   getIncomeById,
   updateIncome,
   deleteIncome,
-  exportIncomeExcel
+  exportIncomeExcel,
+  getIncomeByMonth,
 } = require('../controllers/incomeControllers');
 
 // protect all income routes
@@ -22,6 +23,7 @@ router.post('/', createIncome);
 
 // LIST (pagination & search di controller)
 router.get('/', getIncomes);
+router.get('/:type', getIncomeByMonth);
 
 // DETAIL
 router.get('/:id', getIncomeById);

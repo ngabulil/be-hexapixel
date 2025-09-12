@@ -89,6 +89,70 @@ const getOutcomes = async (req, res) => {
     }
 };
 
+const getOutcomeByMonth = async (req, res) => {
+    try {
+        const { type } = req.params;
+        if (!['currMonth', 'prevMonth'].includes(type)) {
+            return formatResponse(res, 400, "Invalid type. Use 'currMonth' or 'prevMonth'.", null);
+        }
+
+        const now = dayjs();
+        const target = type === 'currMonth' ? now : now.subtract(1, 'month');
+        const startDate = target.startOf('month').toDate();
+        const endDate = target.endOf('month').toDate();
+
+        const datas = await Outcome.aggregate([
+            {
+                $match: {
+                    createdAt: { $gte: startDate, $lte: endDate }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'itemoutcomes',
+                    localField: 'item',
+                    foreignField: '_id',
+                    as: 'item'
+                }
+            },
+            { $unwind: '$item' },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'createdBy',
+                    foreignField: '_id',
+                    as: 'createdBy'
+                }
+            },
+            { $unwind: '$createdBy' },
+            { $sort: { createdAt: -1 } },
+            // Opsional: pilih field
+            // {
+            //   $project: {
+            //     personInTransaction: 1,
+            //     whatsapp: 1,
+            //     amount: 1,
+            //     createdAt: 1,
+            //     'item._id': 1,
+            //     'item.name': 1,
+            //     'createdBy._id': 1,
+            //     'createdBy.fullName': 1,
+            //     'createdBy.username': 1
+            //   }
+            // }
+        ]);
+
+        return formatResponse(res, 200, `Outcome list for ${type}`, {
+            type: 'outcomes',
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            datas
+        });
+    } catch (err) {
+        return formatResponse(res, 500, 'Failed to get outcomes by month', { error: err.message });
+    }
+};
+
 const getOutcomeById = async (req, res) => {
     try {
         const outcome = await Outcome.findById(req.params.id)
@@ -218,5 +282,6 @@ module.exports = {
     getOutcomeById,
     updateOutcome,
     deleteOutcome,
-    exportOutcomesByMonth
+    exportOutcomesByMonth,
+    getOutcomeByMonth
 };
